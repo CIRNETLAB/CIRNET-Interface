@@ -1,0 +1,20 @@
+{
+  "sourceRepository": "https://github.com/net-Circuit-Remote/net-Circuit-Remote",
+  "sourceRevision": "40a4cad80be76a5b08943fab51ee2218cb7d7012",
+  "files": [
+    {
+      "sourcePath": "apps/web/src/data/componentSearch.ts",
+      "file": "src/data/componentSearch.ts",
+      "gitBlob": "2ffb7a510e2c11117196e88b116f2cdfe64c81c9",
+      "sha256": "353d4d1fbab0b9c3a7ef52022d6d56d01de4b45ef0fb808591a97fe9592dcd31",
+      "trimmedSha256": "5de699676ba1b485921390c5d38bc674a4de8b9ed2a67cf395274bc294fde89a"
+    },
+    {
+      "sourcePath": "apps/web/src/three/PackageThumbnails.ts",
+      "file": "src/three/PackageThumbnails.ts",
+      "gitBlob": "6707d9417b9ca7d5dc000c76a7f42b026f9b0169",
+      "sha256": "1d994f5229dbf52569d4342fc7f0a3838bf1b4b2615a146e3c22deea2f46d219",
+      "trimmedSha256": "f8efcc125baa56daddb77c0e7e627923600d759f4f03ac5a8a7d80129ed1f481"
+    }
+  ]
+}

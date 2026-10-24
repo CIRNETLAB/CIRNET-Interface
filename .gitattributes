@@ -1,0 +1,5 @@
+# Byte-verified delivered icons and historical implementation fixtures.
+src/assets/icons/*.svg text eol=lf
+assets/**/*.svg text eol=lf
+tests/fixtures/historical/** text eol=lf
+src/types/lab.ts text eol=lf

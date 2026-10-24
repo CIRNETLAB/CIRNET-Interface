@@ -1,0 +1,28 @@
+import catalog from '@tinihi-labs/contracts/data/editorCatalog.json' with { type: 'json' }
+import type { CircuitModule } from '../types/circuit'
+import { validParameterValue } from './componentParameters'
+import type { ComponentParameter } from './componentParameters'
+export type { ComponentParameter } from './componentParameters'
+export type { SignalDomain } from '@tinihi-labs/contracts/dto'
+export type LogicalPort = import('@tinihi-labs/contracts/dto').SignalPortDefinition
+export interface ComponentDefinition {
+  type: string; name: string; family: string; visual: string; size: number[]; color: string
+  ports: LogicalPort[]; defaults: Record<string, unknown>; parameters: ComponentParameter[]
+  visualOnly?: boolean; metadataRef?: string; memoryContract?: string; partNumber?: string; breadboardTopologyRef?: string
+  mode?: 'physical'; partDefinitionId?: string; partRevision?: number
+}
+export const componentCatalog = catalog.components as ComponentDefinition[]
+export const getDefinition = (type: string) => componentCatalog.find((definition) => definition.type === type)
+export function getPort(modules: CircuitModule[], endpoint: string) {
+  const [id, name] = endpoint.split('.')
+  const module = modules.find((module) => module.id === id)
+  return module ? getDefinition(module.type)?.ports.find((port) => port.id === name) : undefined
+}
+export function validateProperties(type: string, properties: Record<string, unknown>) {
+  const definition = getDefinition(type)
+  if (!definition) throw new Error('This component has no editor configuration contract.')
+  for (const parameter of definition.parameters) {
+    const value = properties[parameter.key]
+    if (!validParameterValue(parameter, value)) throw new Error(`Invalid ${parameter.label}.`)
+  }
+}

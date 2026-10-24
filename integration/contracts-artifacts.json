@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_UNPUBLISHED",
+  "contractsVersion": "1.0.1",
+  "npm": {
+    "name": "@tinihi-labs/contracts",
+    "version": "1.0.1",
+    "filename": "tinihi-labs-contracts-1.0.1.tgz",
+    "sha256": "17cac7b7ec725581b2ff02078900d5a08ac0f5504df2e1fc3c3703a594c86579",
+    "urlEnvironment": "NETCIRCUIT_CONTRACTS_NPM_URL"
+  },
+  "sdist": {
+    "name": "netcircuit-contracts",
+    "version": "1.0.1",
+    "filename": "netcircuit_contracts-1.0.1.tar.gz",
+    "sha256": "d527113fcd9d41d192576b49b69bf7a7af2f329b61a696c96220b1cf10af1473",
+    "urlEnvironment": "NETCIRCUIT_CONTRACTS_SDIST_URL"
+  },
+  "dev_npm": {
+    "name": "@tinihi-labs/artifact-paths",
+    "version": "1.0.0-m1.0",
+    "filename": "tinihi-labs-artifact-paths-1.0.0-m1.0.tgz",
+    "sha256": "53190cceb3eee6bb92e91edf1eda0c01043e0ea095cbba1e745a0f7103e6f6df",
+    "nodeSha256": "7c42c4fd171ed861b365f08501f3c765282d6bba2dcd6430c9677cddd1abe345",
+    "urlEnvironment": "NETCIRCUIT_ARTIFACT_PATHS_NPM_URL"
+  }
+}

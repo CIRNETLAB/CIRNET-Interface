@@ -1,0 +1,84 @@
+name: Standalone Interface
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: interface-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Bootstrap exact SDK and DEV artifacts before allocation or npm ci
+        env:
+          NETCIRCUIT_ARTIFACTS_DIR: ${{ runner.temp }}/netcircuit-interface
+          NETCIRCUIT_CONTRACTS_NPM_URL: ${{ vars.NETCIRCUIT_CONTRACTS_NPM_URL }}
+          NETCIRCUIT_CONTRACTS_SDIST_URL: ${{ vars.NETCIRCUIT_CONTRACTS_SDIST_URL }}
+          NETCIRCUIT_ARTIFACT_PATHS_NPM_URL: ${{ vars.NETCIRCUIT_ARTIFACT_PATHS_NPM_URL }}
+          NETCIRCUIT_ARTIFACTS_TOKEN: ${{ secrets.NETCIRCUIT_ARTIFACTS_READ_TOKEN }}
+        run: node scripts/bootstrap-contracts.mjs --github-env "$GITHUB_ENV"
+      - name: Clean locked install without sibling sources
+        run: npm ci --no-audit --no-fund
+      - name: AST boundaries and all runtime tests
+        run: |
+          node --test scripts/*.test.mjs
+          npm run check:boundaries
+          npm test
+      - name: Browser typecheck and every production entrypoint
+        run: |
+          npx tsc --noEmit -p tsconfig.e2e.json
+          npm run build
+      - name: Export versioned source verification and static bundles externally
+        run: |
+          node --input-type=module - <<'JS'
+          import {execFileSync} from 'node:child_process'
+          import {createHash} from 'node:crypto'
+          import {readFileSync,writeFileSync,mkdirSync,copyFileSync,cpSync,lstatSync,appendFileSync} from 'node:fs'
+          import {dirname,resolve} from 'node:path'
+          import {getArtifactDirectory} from './scripts/artifact-paths.mjs'
+          const version='0.1.0-m2.0',contractsVersion='1.0.1'
+          const product=JSON.parse(readFileSync('package.json','utf8'))
+          if(product.version!==version)throw new Error('Interface product version does not match the reviewed export version.')
+          const output=getArtifactDirectory('interface-artifacts'),source=getArtifactDirectory('interface-source-stage'),staticRoot=getArtifactDirectory('interface-static-stage')
+          const excluded=new Set(['.git','node_modules','.artifacts','.runtime','.build','.test-build','.benchmark-build','dist'])
+          const files=execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(file=>file&&!excluded.has(file.split('/')[0])&&file!=='interface-artifact.json').sort()
+          const sha=bytes=>createHash('sha256').update(bytes).digest('hex')
+          const fingerprint=createHash('sha256')
+          for(const file of files){
+            if(!lstatSync(file).isFile())throw new Error('Interface source export requires regular source files: '+file)
+            const bytes=readFileSync(file)
+            if(file!=='migration/verification.md')fingerprint.update(sha(bytes)+'  '+file+'\n')
+            const target=resolve(source,file);mkdirSync(dirname(target),{recursive:true});copyFileSync(file,target)
+          }
+          const metadata={schema:1,name:'netcircuit-interface',version,kind:'source',source:{repository:process.env.GITHUB_SERVER_URL+'/'+process.env.GITHUB_REPOSITORY+'.git',revision:process.env.GITHUB_SHA,uncommittedMigration:false},contractsVersion,sourceFingerprint:fingerprint.digest('hex'),sourceFingerprintAlgorithm:'sha256-path-lines-v1'}
+          writeFileSync(resolve(source,'interface-artifact.json'),JSON.stringify(metadata,null,2)+'\n')
+          cpSync('dist',staticRoot,{recursive:true,dereference:true})
+          writeFileSync(resolve(staticRoot,'interface-artifact.json'),JSON.stringify({...metadata,kind:'static'},null,2)+'\n')
+          const artifacts={}
+          for(const [kind,directory] of [['source',source],['static',staticRoot]]){
+            const filename='netcircuit-interface-'+version+'-'+kind+'.tar.gz',archive=resolve(output,filename)
+            execFileSync('tar',['--sort=name','--mtime=@0','--owner=0','--group=0','--numeric-owner','--format=gnu','-czf',archive,'-C',directory,'.'])
+            artifacts[kind]={filename,sha256:sha(readFileSync(archive))}
+          }
+          writeFileSync(resolve(output,'artifacts.json'),JSON.stringify({schema:1,name:metadata.name,version,contractsVersion,sourceFingerprint:metadata.sourceFingerprint,artifacts},null,2)+'\n')
+          appendFileSync(process.env.GITHUB_ENV,'NETCIRCUIT_INTERFACE_EXPORT_DIR='+output+'\n')
+          JS
+      - name: Retain versioned Interface artifacts for explicit downstream review
+        uses: actions/upload-artifact@v4
+        with:
+          name: netcircuit-interface-0.1.0-m2.0
+          path: ${{ env.NETCIRCUIT_INTERFACE_EXPORT_DIR }}
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
+      - name: Clean only this owned external verification session
+        if: always() && env.NETCIRCUIT_ARTIFACTS_SESSION != ''
+        run: node scripts/cleanup-contracts.mjs

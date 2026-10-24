@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_UNPUBLISHED",
+  "interface": {
+    "name": "@net-circuit/web",
+    "version": "0.1.0-m2.0",
+    "artifactName": "netcircuit-interface"
+  },
+  "contracts": {
+    "npm": "1.0.1",
+    "python": "1.0.1",
+    "npmSha256": "17cac7b7ec725581b2ff02078900d5a08ac0f5504df2e1fc3c3703a594c86579"
+  },
+  "remote": {
+    "sourceRevision": "745077403f233790bdb6781c36d6502feca01642",
+    "apiOpenApiSha256": "f55fbf65d4988bc122b52936e69654a1024c8ac5d30240041629620b2a524e20",
+    "hardwareRpcVersion": "2.0",
+    "integrationOwner": "net-Circuit-Remote"
+  },
+  "graphs": [
+    "1.0",
+    "1.1",
+    "1.2"
+  ],
+  "delivery": {
+    "sameOrigin": true,
+    "apiPrefix": "/api",
+    "webSocketPrefix": "/ws",
+    "modelPrefix": "/models"
+  },
+  "platforms": {
+    "web": "IMPLEMENTED",
+    "desktop": "PROPOSED",
+    "mobile": "PROPOSED"
+  },
+  "history": {
+    "filteredTip": "4784ff913db83915104406e92019b3bde574ecc1",
+    "ancestryConnection": "PENDING_SEPARATE_APPROVAL"
+  }
+}
