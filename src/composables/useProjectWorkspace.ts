@@ -23,7 +23,11 @@ export function useProjectWorkspace() {
   })
   const navigate=watch(()=>[route.fullPath,auth.ready,auth.principal?.principal_id] as const,async()=>{
     const version=++navigation
+    // The initial local draft can render before a server route is hydrated.
+    // Keep document commands behind this entire transition, including auth.
+    projects.navigationPending=route.name==='ProjectWorkspace'||route.name==='ProjectCircuit'
     if(!auth.ready)return
+    try {
     await transition
     if(disposed||version!==navigation)return
     projects.navigationError=null
@@ -43,11 +47,12 @@ export function useProjectWorkspace() {
     }
     if(!projects.circuits.some(document=>document.document_id===documentId)){projects.navigationError='Circuit not found in this project, or access is unavailable.';return}
     await projects.requestOpen(documentId)
-  },{immediate:true})
+    } finally {if(!disposed&&version===navigation)projects.navigationPending=false}
+  },{immediate:true,flush:'sync'})
   const binding=watch(()=>projects.saveState.binding,(next,previous)=>{
     if(next&&next.documentId!==previous?.documentId)void router.replace({name:'ProjectCircuit',params:{projectId:next.projectId,documentId:next.documentId}})
     else if(!next&&previous&&route.name==='ProjectCircuit')void router.replace('/')
   })
   const request=watch(()=>projects.requestedDocumentId,id=>{if(id)ui.openWindow('projects')})
-  onUnmounted(()=>{disposed=true;++navigation;principal();claim();navigate();binding();request();projects.dispose()})
+  onUnmounted(()=>{disposed=true;++navigation;projects.navigationPending=false;principal();claim();navigate();binding();request();projects.dispose()})
 }

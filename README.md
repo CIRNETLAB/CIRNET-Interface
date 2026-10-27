@@ -204,6 +204,8 @@ Unknown imported types/properties/port names are retained and exposed via Inspec
 
 ## Ownership and lifecycle
 
+Server project routes keep Save, Save As and Export unavailable through authentication, project selection and document hydration. A rendered initial local scene does not establish that the requested server document is ready. See [server route hydration verification](migration/server-route-hydration.md).
+
 ```text
 App.vue -> SingleWorkspaceShell
   AppTitleBar / WorkbenchRibbon (ComponentRibbon or RunRibbonPanel)

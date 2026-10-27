@@ -69,6 +69,26 @@ test('Ctrl+S respects the same saving guard as the File menu command',()=>{
  }finally{h.unmount();if(previous)Object.defineProperty(globalThis,'window',previous);else Reflect.deleteProperty(globalThis,'window')}
 })
 
+test('pending server navigation blocks current-document commands through menu and keyboard without blocking project access',()=>{
+ const previous=Object.getOwnPropertyDescriptor(globalThis,'window'),keyboardWindow=new EventTarget()
+ Object.defineProperty(globalThis,'window',{configurable:true,value:keyboardWindow})
+ const h=mount(titleBar),circuit=useCircuitStore(),projects=useProjectStore(),ui=useUiStore()
+ try{
+  circuit.createDraft();projects.$patch({navigationPending:true} as Partial<typeof projects.$state>)
+  const items=h.state.fileItems as {id:string;disabled:boolean}[]
+  for(const id of ['save','saveAs','export'])assert.equal(items.find(item=>item.id===id)?.disabled,true,id)
+  const command=h.state.fileCommand as (id:string)=>void
+  command('save');command('saveAs');command('export')
+  const event=new Event('keydown',{cancelable:true})
+  Object.defineProperties(event,{key:{value:'s'},ctrlKey:{value:true},metaKey:{value:false}})
+  keyboardWindow.dispatchEvent(event)
+  assert.equal(ui.windows.some(window=>window.kind==='projects'&&window.open),false)
+  command('open');assert.equal(ui.windows.some(window=>window.kind==='projects'&&window.open),true)
+  projects.$patch({navigationPending:false} as Partial<typeof projects.$state>)
+  assert.equal((h.state.fileItems as typeof items).find(item=>item.id==='export')?.disabled,false)
+ }finally{h.unmount();if(previous)Object.defineProperty(globalThis,'window',previous);else Reflect.deleteProperty(globalThis,'window')}
+})
+
 test('File commands preserve exact menu order and share missing-document and pending-save guards',()=>{
  const previous=Object.getOwnPropertyDescriptor(globalThis,'window')
  Object.defineProperty(globalThis,'window',{configurable:true,value:new EventTarget()})

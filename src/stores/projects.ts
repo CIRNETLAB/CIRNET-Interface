@@ -16,7 +16,7 @@ function request(owner:object) {const controller=new AbortController();const val
 function release(owner:object,controller:AbortController){pendingRequests.get(owner)?.delete(controller)}
 function abort(owner:object){for(const controller of pendingRequests.get(owner)??[])controller.abort();pendingRequests.delete(owner)}
 export const useProjectStore=defineStore('projects',{
-  state:()=>({projects:[] as Project[],selectedProjectId:null as string|null,circuits:[] as CircuitSummary[],projectsLoading:false,circuitsLoading:false,pending:false,error:null as string|null,navigationError:null as string|null,
+  state:()=>({projects:[] as Project[],selectedProjectId:null as string|null,circuits:[] as CircuitSummary[],projectsLoading:false,circuitsLoading:false,pending:false,error:null as string|null,navigationError:null as string|null,navigationPending:false,
     nextProjectCursor:null as string|null,nextCircuitCursor:null as string|null,recoveries:[] as RecoverySummary[],requestedDocumentId:null as string|null,generation:0,selectionVersion:0,
     saveState:{principalId:null,phase:'local',dirty:false,binding:null,error:null,recoveryError:null} as SaveState}),
   getters:{
@@ -151,12 +151,14 @@ export const useProjectStore=defineStore('projects',{
       this.requestedDocumentId=null;return this.openDocument(id)
     },
     async saveCurrent():Promise<boolean> {
+      if(this.navigationPending)return false
       this.controller().documentChanged()
       const saved=await this.controller().save()
       if(saved&&this.selectedProject)await this.loadCircuits()
       return saved
     },
     async saveAs(projectId:string):Promise<boolean> {
+      if(this.navigationPending)return false
       this.controller().documentChanged()
       const saved=await this.controller().saveAs(projectId)
       if(saved){this.selectedProjectId=projectId;if(this.selectedProject)await this.loadCircuits()}

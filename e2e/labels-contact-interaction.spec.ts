@@ -375,3 +375,41 @@ test('native held tactile input stays out of checkpoint, Export and server Save'
   expect(moduleById(await exportedNativeGraph(page),'T').properties?.pressed).toBe(false)
   await attachEvidence(page,testInfo,'native-tactile-authored-persistence',await exportedNativeGraph(page))
 })
+
+test('server route hydration blocks premature Export until the real saved tactile graph is accepted',async({page})=>{
+  test.setTimeout(150_000)
+  const {getPartForType,physicalDescriptorForPart}=await contactCatalog(),part=getPartForType('PUSH_BUTTON_B3F1000')!
+  const name=`Hydrated tactile ${randomUUID()}`
+  await openNative(page,{schema_version:'1.2',circuit_id:name,metadata:{name},modules:[{
+    id:'T',type:part.editorType,position:{x:0,y:.5,z:0},physicalDescriptor:physicalDescriptorForPart(part),properties:{...part.editor.defaults,pressed:false},
+  }],connections:[]})
+  await fileCommand(page,'Open Project')
+  await projects(page).getByLabel('New project name',{exact:true}).fill(name)
+  await projects(page).getByRole('button',{name:'Create project',exact:true}).click()
+  await projects(page).getByRole('button',{name:'Save circuit as new server document',exact:true}).click()
+  await expect(projects(page).getByLabel('Server save status',{exact:true})).toContainText('saved')
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/circuits\/[^/]+$/)
+  const id=new URL(page.url()).pathname.split('/').at(-1)!
+  let release!:()=>void,received!:()=>void
+  const gate=new Promise<void>(resolve=>{release=resolve}),responseReceived=new Promise<void>(resolve=>{received=resolve})
+  const downloads:string[]=[];page.on('download',download=>downloads.push(download.suggestedFilename()))
+  await page.route(`**/api/v2/circuits/${id}`,async route=>{
+    if(route.request().method()!=='GET'){await route.continue();return}
+    const response=await route.fetch()
+    expect(moduleById((await response.json()).graph,'T').properties?.pressed).toBe(false)
+    received();await gate;await route.fulfill({response})
+  })
+  try{
+    await page.reload();await responseReceived;await sceneReady(page)
+    await page.getByRole('button',{name:'File',exact:true}).click()
+    const exportItem=page.getByRole('menuitem',{name:'Export',exact:true})
+    await expect(exportItem).toBeDisabled()
+    await expect(page.getByRole('menuitem',{name:'Save',exact:true})).toBeDisabled()
+    await expect(page.getByRole('menuitem',{name:'Save As',exact:true})).toBeDisabled()
+    await expect(projects(page).getByRole('button',{name:'Save server circuit',exact:true})).toBeDisabled()
+    await expect(projects(page).getByRole('button',{name:'Save circuit as new server document',exact:true})).toBeDisabled()
+    expect(downloads).toEqual([])
+    release();await expect(exportItem).toBeEnabled();await page.keyboard.press('Escape')
+    expect(moduleById(await exportedNativeGraph(page),'T').properties?.pressed).toBe(false)
+  }finally{release()}
+})

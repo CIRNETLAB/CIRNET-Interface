@@ -13,6 +13,14 @@ const document=(revision=1,name='Server name'):CircuitDocument=>({schema_version
   graph:{schema_version:'1.0',circuit_id:'embedded-id',modules:[],connections:[],metadata:{extension:{retained:true}}}})
 beforeEach(()=>setActivePinia(createPinia()))
 
+test('pending server navigation cannot dispatch Save or Save As from another UI entry point',async()=>{
+  const projects=useProjectStore()
+  projects.$patch({navigationPending:true} as Partial<typeof projects.$state>)
+  projects.controller=()=>{throw new Error('A loading route must not enter the save controller.')}
+  assert.equal(await projects.saveCurrent(),false)
+  assert.equal(await projects.saveAs('p1'),false)
+})
+
 test('Pinia tracking proxy action contexts share the same principal-scoped controller',async()=>{
   const store=useProjectStore();await store.setPrincipal('owner')
   const first=new Proxy(store,{}),second=new Proxy(store,{})

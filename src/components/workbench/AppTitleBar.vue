@@ -46,7 +46,7 @@ async function openFile(event: Event) {
   finally { if (version === readVersion) input.value = '' }
 }
 function saveFile() {
-  if (!circuit.current) return
+  if (!circuit.current || projects.navigationPending) return
   try {
     const url = URL.createObjectURL(new Blob([circuit.exportGraph()], { type: 'application/json' }))
     const link = document.createElement('a')
@@ -64,10 +64,10 @@ function saveFile() {
 const fileItems = computed<FileMenuItem[]>(() => [
   { id: 'new', label: 'New', disabled: false, shortcut: 'Ctrl+N' },
   { id: 'open', label: 'Open Project', disabled: false, shortcut: 'Ctrl+O', restoreFocus: false },
-  { id: 'save', label: 'Save', disabled: !circuit.current || projects.saveState.phase === 'saving', shortcut: 'Ctrl+S', restoreFocus: !!projects.saveState.binding },
-  { id: 'saveAs', label: 'Save As', disabled: !circuit.current, restoreFocus: false },
+  { id: 'save', label: 'Save', disabled: !circuit.current || projects.navigationPending || projects.saveState.phase === 'saving', shortcut: 'Ctrl+S', restoreFocus: !!projects.saveState.binding },
+  { id: 'saveAs', label: 'Save As', disabled: !circuit.current || projects.navigationPending, restoreFocus: false },
   { id: 'import', label: 'Import', disabled: false, restoreFocus: false },
-  { id: 'export', label: 'Export', disabled: !circuit.current },
+  { id: 'export', label: 'Export', disabled: !circuit.current || projects.navigationPending },
   { id: 'history', label: 'History', disabled: false, restoreFocus: false },
   { id: 'assignment', label: 'Assignment', disabled: false, restoreFocus: false },
 ])
