@@ -40,6 +40,11 @@ jobs:
           npx tsc --noEmit -p tsconfig.e2e.json
           npm run build
       - name: Export versioned source verification and static bundles externally
+        env:
+          NETCIRCUIT_CONTRACTS_NPM_URL: ${{ vars.NETCIRCUIT_CONTRACTS_NPM_URL }}
+          NETCIRCUIT_CONTRACTS_SDIST_URL: ${{ vars.NETCIRCUIT_CONTRACTS_SDIST_URL }}
+          NETCIRCUIT_ARTIFACT_PATHS_NPM_URL: ${{ vars.NETCIRCUIT_ARTIFACT_PATHS_NPM_URL }}
+          NETCIRCUIT_ARTIFACTS_TOKEN: ${{ secrets.NETCIRCUIT_ARTIFACTS_READ_TOKEN }}
         run: |
           output="$(node --input-type=module -e "import {getArtifactDirectory} from './scripts/artifact-paths.mjs';console.log(getArtifactDirectory('interface-artifacts'))")"
           python -B scripts/build_release.py --output-directory "$output"

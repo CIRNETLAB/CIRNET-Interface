@@ -9,7 +9,7 @@
   "contracts": {
     "npm": "0.1.1",
     "python": "0.1.1",
-    "npmSha256": "f57d83d5f4c8faf3865e94e79ef331ebc936686e415e691372ecf0db06abbdaf"
+    "npmSha256": "3bfc8b6f84b645cd6b7864bd1391de1d5efdc6ee4ba653cb92e145a3ddd2bc83"
   },
   "remote": {
     "sourceRevision": "c9ce51c35942ad8211dacabe838ce25c5e76e537",
