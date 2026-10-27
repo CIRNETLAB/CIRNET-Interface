@@ -1,4 +1,4 @@
-import {WebGLRenderer,PCFSoftShadowMap,Vector3,Mesh,Box3,REVISION,Raycaster,Vector2} from 'three'
+import {WebGLRenderer,PCFSoftShadowMap,Vector3,Vector4,Mesh,Box3,REVISION,Raycaster,Vector2} from 'three'
 import {createSceneManager} from '../src/three/SceneManager'
 import {getPartForType,historicalPartCatalog,physicalDescriptorForPart,getPartForModule} from '../src/data/partCatalog'
 import type {CircuitGraph,CircuitModule} from '../src/types/circuit'
@@ -22,20 +22,40 @@ function pose(id:string,distance=30,azimuth=0,elevation=45){selected=id;const mo
 function metadata(){const c=manager.camera;return{threeRevision:REVISION,webglVersion:gl.getParameter(gl.VERSION),backend:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),depthBits:gl.getParameter(gl.DEPTH_BITS),drawingBuffer:[gl.drawingBufferWidth,gl.drawingBufferHeight],dpr:renderer.getPixelRatio(),near:c.near,far:c.far,position:c.position.toArray(),quaternion:c.quaternion.toArray(),frames,trustedRightDrags,graph}}
 function polygon(mesh:Mesh,front:boolean,pad=.04){mesh.geometry.computeBoundingBox();mesh.updateWorldMatrix(true,false);const b=mesh.geometry.boundingBox!,p=pad;const points=front?[[b.min.x+p,b.min.y+p,b.max.z],[b.max.x-p,b.min.y+p,b.max.z],[b.max.x-p,b.max.y-p,b.max.z],[b.min.x+p,b.max.y-p,b.max.z]]:[[b.min.x+p,b.max.y,b.min.z+p],[b.max.x-p,b.max.y,b.min.z+p],[b.max.x-p,b.max.y,b.max.z-p],[b.min.x+p,b.max.y,b.max.z-p]];return points.map(p=>{const v=new Vector3(...p as[number,number,number]).applyMatrix4(mesh.matrixWorld).project(manager.camera);return[(v.x+1)*gl.drawingBufferWidth/2,(v.y+1)*gl.drawingBufferHeight/2]})}
 function inside(x:number,y:number,poly:number[][]){let odd=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])odd=!odd}return odd}
-async function leaks(id=selected,glyphs=false){
+interface LeakImages {original?:Uint8Array;colored?:Uint8Array;restored?:Uint8Array}
+// The framebuffer, viewport and readback indexing stay full-sized. Only analysis
+// rasterization is bounded; transmission render targets retain Three's own state.
+function analysisSnapshot(bounds:{minX:number;minY:number;maxX:number;maxY:number},full:boolean){
+ if(full)return snapshot()
+ const previous=renderer.getScissor(new Vector4()),enabled=renderer.getScissorTest(),dpr=renderer.getPixelRatio()
+ try{
+  // A caller's active clip remains authoritative, including in the reference path.
+  if(enabled){
+   const left=Math.max(bounds.minX/dpr,previous.x),bottom=Math.max(bounds.minY/dpr,previous.y),right=Math.min(bounds.maxX/dpr,previous.x+previous.z),top=Math.min(bounds.maxY/dpr,previous.y+previous.w)
+   renderer.setScissor(left,bottom,Math.max(0,right-left),Math.max(0,top-bottom))
+  }else renderer.setScissor(bounds.minX/dpr,bounds.minY/dpr,Math.max(0,bounds.maxX-bounds.minX)/dpr,Math.max(0,bounds.maxY-bounds.minY)/dpr)
+  renderer.setScissorTest(true)
+  return snapshot()
+ }finally{renderer.setScissor(previous);renderer.setScissorTest(enabled)}
+}
+async function leaks(id=selected,glyphs=false,images?:LeakImages,fullAnalysis=false){
  const model=manager.models.get(id)!,names=id==='SCOPE'?['horizontal_panel','trigger_panel','vertical_panel','screen']:id==='GEN'?['function_panel','screen']:id==='PSU'?['supply-front','control-strip','supply-display']:id==='BOARD'?['breadboard-artwork']:['package-display-face']
  const fronts:Mesh[]=[];if(glyphs)model.traverse(o=>{if(o instanceof Mesh&&o.userData.segment)fronts.push(o)});else fronts.push(...names.map(name=>model.getObjectByName(name)).filter((v):v is Mesh=>v instanceof Mesh))
  if(!fronts.length)return{tested:0,changed:0,regions:[]}
- const regions=id==='BOARD'?[-1.25,-.98,-.83,.83,.98,1.25].map(z=>{const mesh=fronts[0];mesh.geometry.computeBoundingBox();const b=mesh.geometry.boundingBox!;return[[b.min.x+.4,z-.015],[b.max.x-.4,z-.015],[b.max.x-.4,z+.015],[b.min.x+.4,z+.015]].map(([x,z])=>{const v=new Vector3(x,b.max.y,z).applyMatrix4(mesh.matrixWorld).project(manager.camera);return[(v.x+1)*gl.drawingBufferWidth/2,(v.y+1)*gl.drawingBufferHeight/2]})}):fronts.map(mesh=>{const front=id==='SCOPE'||id==='GEN'||id==='PSU'||Math.abs(mesh.matrixWorld.elements[9])>.5;mesh.geometry.computeBoundingBox();const b=mesh.geometry.boundingBox!,pad=glyphs?Math.min(b.max.x-b.min.x,front?b.max.y-b.min.y:b.max.z-b.min.z)*.15:.04;return polygon(mesh,front,pad)}),original=snapshot()
+ const regions=id==='BOARD'?[-1.25,-.98,-.83,.83,.98,1.25].map(z=>{const mesh=fronts[0];mesh.geometry.computeBoundingBox();const b=mesh.geometry.boundingBox!;return[[b.min.x+.4,z-.015],[b.max.x-.4,z-.015],[b.max.x-.4,z+.015],[b.min.x+.4,z+.015]].map(([x,z])=>{const v=new Vector3(x,b.max.y,z).applyMatrix4(mesh.matrixWorld).project(manager.camera);return[(v.x+1)*gl.drawingBufferWidth/2,(v.y+1)*gl.drawingBufferHeight/2]})}):fronts.map(mesh=>{const front=id==='SCOPE'||id==='GEN'||id==='PSU'||Math.abs(mesh.matrixWorld.elements[9])>.5;mesh.geometry.computeBoundingBox();const b=mesh.geometry.boundingBox!,pad=glyphs?Math.min(b.max.x-b.min.x,front?b.max.y-b.min.y:b.max.z-b.min.z)*.15:.04;return polygon(mesh,front,pad)})
+ const minX=Math.max(0,Math.floor(Math.min(...regions.flat().map(p=>p[0])))),maxX=Math.min(gl.drawingBufferWidth,Math.ceil(Math.max(...regions.flat().map(p=>p[0])))),minY=Math.max(0,Math.floor(Math.min(...regions.flat().map(p=>p[1])))),maxY=Math.min(gl.drawingBufferHeight,Math.ceil(Math.max(...regions.flat().map(p=>p[1]))))
+ const bounds={minX,maxX,minY,maxY},original=analysisSnapshot(bounds,fullAnalysis)
+ if(images)images.original=original
  // Mutate the existing material in place: cloning changes opaque sort IDs.
  const saved=new Map<any,{color:any;emissive:any;intensity:number}>(),marked=new Set<Mesh>(),callbacks=new Map<Mesh,Mesh['onBeforeRender']>()
  model.traverse(o=>{if(!(o instanceof Mesh))return;const mark=glyphs?o.name==='package-display-face':id==='SCOPE'?(names.some(name=>o.name===`${name}_rim`)||o.name==='screen_recess'):id==='GEN'?['function_panel_rim','screen_recess'].includes(o.name):id==='PSU'?['supply-bezel','display-recess'].includes(o.name):id==='BOARD'?o.userData.breadboardDeck===true:o.name==='package-body';if(!mark)return;marked.add(o);for(const mat of Array.isArray(o.material)?o.material:[o.material]){if(saved.has(mat)||!('color'in mat))continue;saved.set(mat,{color:mat.color.clone(),emissive:mat.emissive?.clone(),intensity:mat.emissiveIntensity})}})
+ try{
  // Refresh only per-draw uniforms, keeping original material IDs and sort order.
  model.traverse(o=>{if(!(o instanceof Mesh)||(Array.isArray(o.material)?o.material:[o.material]).every(mat=>!saved.has(mat)))return;const previous=o.onBeforeRender;callbacks.set(o,previous);o.onBeforeRender=function(...args){previous.apply(this,args);const mat=args[4] as any,state=saved.get(mat);if(!state)return;const diagnostic=marked.has(this);mat.color.copy(state.color);if(diagnostic)mat.color.set('#ff00ff');if(state.emissive){mat.emissive.copy(state.emissive);mat.emissiveIntensity=state.intensity;if(diagnostic){mat.emissive.set('#ff00ff');mat.emissiveIntensity=1}}mat.needsUpdate=true}})
- const colored=snapshot(),raycaster=new Raycaster(),ndc=new Vector2(),opaque:Mesh[]=[]
+ const colored=analysisSnapshot(bounds,fullAnalysis),raycaster=new Raycaster(),ndc=new Vector2(),opaque:Mesh[]=[]
+ if(images)images.colored=colored
  model.traverse(o=>{if(!(o instanceof Mesh)||!o.visible)return;for(let p=o.parent;p;p=p.parent)if(!p.visible)return;const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(m=>m.visible&&m.depthTest&&m.depthWrite&&(!m.transparent||m.opacity>=.99)))opaque.push(o)})
  let tested=0,changed=0
- const minX=Math.max(0,Math.floor(Math.min(...regions.flat().map(p=>p[0])))),maxX=Math.min(gl.drawingBufferWidth,Math.ceil(Math.max(...regions.flat().map(p=>p[0])))),minY=Math.max(0,Math.floor(Math.min(...regions.flat().map(p=>p[1])))),maxY=Math.min(gl.drawingBufferHeight,Math.ceil(Math.max(...regions.flat().map(p=>p[1]))))
  for(let y=minY;y<maxY;y++)for(let x=minX;x<maxX;x++){if(!regions.some(poly=>inside(x+.5,y+.5,poly)))continue;tested++;const i=(y*gl.drawingBufferWidth+x)*4;if(Math.max(Math.abs(original[i]-colored[i]),Math.abs(original[i+1]-colored[i+1]),Math.abs(original[i+2]-colored[i+2]))>35){
  // CPU rays only mask legitimate foreground controls; evidence remains actual GPU pixels.
  ndc.set((x+.5)/gl.drawingBufferWidth*2-1,(y+.5)/gl.drawingBufferHeight*2-1);raycaster.setFromCamera(ndc,manager.camera)
@@ -43,9 +63,51 @@ async function leaks(id=selected,glyphs=false){
  // Erode foreground edges by two physical pixels to exclude MSAA sample coverage.
  if(hit&&fronts.includes(hit.object as Mesh)&&(id==='BOARD'?[[-2,0],[2,0],[0,-2],[0,2],[-.125,-.375],[.375,-.125],[-.375,.125],[.125,.375],[-.49,-.49],[.49,-.49],[-.49,.49],[.49,.49]]:[[-2,0],[2,0],[0,-2],[0,2]]).every(([dx,dy])=>{ndc.set((x+.5+dx)/gl.drawingBufferWidth*2-1,(y+.5+dy)/gl.drawingBufferHeight*2-1);raycaster.setFromCamera(ndc,manager.camera);return raycaster.intersectObjects(opaque,false)[0]?.object===hit.object}))changed++
  }}
- for(const[mesh,callback]of callbacks)mesh.onBeforeRender=callback
- for(const[mat,state]of saved){mat.color.copy(state.color);if(state.emissive){mat.emissive.copy(state.emissive);mat.emissiveIntensity=state.intensity}mat.needsUpdate=true}
- snapshot();return{tested,changed,regions}
+ return{tested,changed,regions}
+ }finally{
+  for(const[mesh,callback]of callbacks)mesh.onBeforeRender=callback
+  for(const[mat,state]of saved){mat.color.copy(state.color);if(state.emissive){mat.emissive.copy(state.emissive);mat.emissiveIntensity=state.intensity}mat.needsUpdate=true}
+  const restored=snapshot();if(images)images.restored=restored
+ }
+}
+
+// Explicit proof only: the normal acceptance tests always call leaks' ROI path.
+// A retained full-analysis variant is compared in the same real WebGL context.
+async function proveLeakAnalysis(id=selected,glyphs=false,positiveControl=false){
+ const previousScissor=renderer.getScissor(new Vector4()).toArray(),previousTest=renderer.getScissorTest()
+ const body=manager.models.get(id)?.getObjectByName('package-body'),controlMaterials=new Map<any,{depthTest:boolean;depthWrite:boolean}>()
+ const order=body?.renderOrder,normal=positiveControl?snapshot():null
+ let proof:{controlStateRestored:boolean}|undefined
+ if(positiveControl){
+  if(!(body instanceof Mesh))throw Error('Positive control needs a real package underlayer.')
+  body.renderOrder=1_000_000
+  for(const mat of Array.isArray(body.material)?body.material:[body.material]){controlMaterials.set(mat,{depthTest:mat.depthTest,depthWrite:mat.depthWrite});mat.depthTest=false;mat.depthWrite=false;mat.needsUpdate=true}
+ }
+ try{
+  const referenceImages:LeakImages={},optimizedImages:LeakImages={}
+  const reference=await leaks(id,glyphs,referenceImages,true),optimized=await leaks(id,glyphs,optimizedImages)
+  const a=referenceImages,b=optimizedImages
+  if(!a.original||!a.colored||!a.restored||!b.original||!b.colored||!b.restored)throw Error('Missing actual pixel captures.')
+  let originalDifferingBytes=0,coloredDifferingBytes=0,restoredDifferingBytes=0,comparedPixels=0
+  for(let y=0;y<gl.drawingBufferHeight;y++)for(let x=0;x<gl.drawingBufferWidth;x++){
+   const i=(y*gl.drawingBufferWidth+x)*4
+   if(reference.regions.some(poly=>inside(x+.5,y+.5,poly))){comparedPixels++;for(let k=0;k<4;k++){if(a.original[i+k]!==b.original[i+k])originalDifferingBytes++;if(a.colored[i+k]!==b.colored[i+k])coloredDifferingBytes++}}
+   for(let k=0;k<4;k++)if(a.restored[i+k]!==b.restored[i+k])restoredDifferingBytes++
+  }
+  if(comparedPixels!==reference.tested)throw Error('Proof did not compare every tested pixel.')
+  const result={reference,optimized,comparedPixels,originalDifferingBytes,coloredDifferingBytes,restoredDifferingBytes,
+   scissorRestored:previousTest===renderer.getScissorTest()&&previousScissor.every((v,i)=>v===renderer.getScissor(new Vector4()).toArray()[i]),
+   controlStateRestored:!positiveControl}
+  proof=result;return result
+ }finally{
+  if(body&&order!==undefined)body.renderOrder=order
+  for(const[mat,state]of controlMaterials){mat.depthTest=state.depthTest;mat.depthWrite=state.depthWrite;mat.needsUpdate=true}
+  if(normal){
+   const restored=snapshot(),samePixels=!normal.some((value,index)=>value!==restored[index])
+   if(proof)proof.controlStateRestored=samePixels&&body?.renderOrder===order&&[...controlMaterials].every(([mat,state])=>mat.depthTest===state.depthTest&&mat.depthWrite===state.depthWrite)
+   if(!proof?.controlStateRestored)throw Error('Positive control did not restore the complete normal framebuffer and material state.')
+  }
+ }
 }
 
 function setOn(on:boolean){
@@ -74,5 +136,5 @@ async function gridInvariant(){
 }
 function gridInk(){const visible=snapshot();manager.grid.visible=false;const hidden=snapshot();manager.grid.visible=true;snapshot();let ink=0;for(let i=0;i<visible.length;i+=4)if(Math.max(...[0,1,2].map(k=>Math.abs(visible[i+k]-hidden[i+k])))>2)ink++;return ink}
 
-Object.assign(window,{depthHarness:{manager,renderer,fixture,setGraph(next:CircuitGraph){graph=next;manager.syncGraph(next);renderer.shadowMap.needsUpdate=true},pose,metadata,frame,leaks,setOn,compareGrid,gridInvariant,gridInk,setLegacyClips(){manager.camera.near=.005;manager.camera.far=150;manager.camera.updateProjectionMatrix()},setNear(value:number){manager.camera.near=value;manager.camera.updateProjectionMatrix()}}})
+Object.assign(window,{depthHarness:{manager,renderer,fixture,setGraph(next:CircuitGraph){graph=next;manager.syncGraph(next);renderer.shadowMap.needsUpdate=true},pose,metadata,frame,leaks,proveLeakAnalysis,setOn,compareGrid,gridInvariant,gridInk,setLegacyClips(){manager.camera.near=.005;manager.camera.far=150;manager.camera.updateProjectionMatrix()},setNear(value:number){manager.camera.near=value;manager.camera.updateProjectionMatrix()}}})
 fixture();pose('DISPLAY');await frame();renderer.shadowMap.autoUpdate=false;document.body.dataset.ready='true'
