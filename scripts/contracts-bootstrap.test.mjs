@@ -10,7 +10,7 @@ import {readContractsResource} from './contracts-resources.mjs'
 
 test('release transport rejects mutable or credential-bearing destinations',()=>{
   for(const value of ['http://example.com/v1.tgz','https://user:secret@example.com/v1.tgz','https://example.com/releases/latest/file.tgz'])assert.throws(()=>checkedHttps(value))
-  assert.equal(checkedHttps('https://example.com/releases/1.0.1/contracts.tgz').protocol,'https:')
+  assert.equal(checkedHttps('https://example.com/releases/0.1.1/contracts.tgz').protocol,'https:')
 })
 test('download authentication is confined to the initial GitHub API asset request',async()=>{
   assert.equal(requestHeaders('https://example.com/asset','secret').Authorization,undefined)
@@ -57,6 +57,10 @@ test('a release failure publishes ownership and supports cleanup before npm inst
     assert.match(failed.stderr,/Manifest npm differs/)
     assert.equal(existsSync(githubEnv),true,'ownership must be published before a later artifact fails')
     const published=Object.fromEntries(readFileSync(githubEnv,'utf8').trim().split(/\r?\n/).map(line=>{const split=line.indexOf('=');return [line.slice(0,split),line.slice(split+1)]}))
+    assert.equal(published.TMPDIR,published.TMP,'Linux child temporary output must use the owned runtime too')
+    const child=spawnSync(process.execPath,['-e',"const fs=require('node:fs'),os=require('node:os'),path=require('node:path');console.log(fs.mkdtempSync(path.join(os.tmpdir(),'bootstrap-child-')))"],{env:{...environment,...published},encoding:'utf8',windowsHide:true})
+    assert.equal(child.status,0,child.stderr)
+    assert.equal(child.stdout.trim().startsWith(published.TMPDIR),true)
     assert.equal(existsSync(resolve(fixture,'node_modules')),false)
     const cleanup=spawnSync(process.execPath,[resolve(root,'scripts/cleanup-contracts.mjs')],{env:{...environment,...published},encoding:'utf8',windowsHide:true})
     assert.equal(cleanup.status,0,cleanup.stdout+cleanup.stderr)

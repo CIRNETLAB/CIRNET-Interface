@@ -106,3 +106,7 @@ Proposed only, after review and final gate disposition:
 - Remote: `refactor: integrate versioned Interface artifacts and browser lifecycle`
 
 No commit, stage, push, ancestry merge, deployment or M3 action is implied.
+
+## 2026-10-27 investigation follow-up
+
+The [native gallery recovery investigation](native-gallery-investigation.md) records a fresh unchanged original-gallery PASS, the separately diagnosed synchronous recovery work, its bounded-count correction and current verification limits. The historical M2 full-suite result and measurements above remain unchanged; this follow-up does not relabel the original failure or grant full M6 acceptance.

@@ -1,7 +1,7 @@
 {
   "name": "@net-circuit/web",
   "private": true,
-  "version": "0.1.0-m2.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -22,7 +22,7 @@
     "three": "^0.171.0",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4",
-    "@tinihi-labs/contracts": "file:.artifacts/tinihi-labs-contracts-1.0.1.tgz"
+    "@tinihi-labs/contracts": "file:.artifacts/tinihi-labs-contracts-0.1.1.tgz"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

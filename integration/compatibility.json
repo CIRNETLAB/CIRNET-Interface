@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "status": "LOCAL_UNPUBLISHED",
+  "status": "PINNED_ARTIFACT_INPUTS",
   "interface": {
     "name": "@net-circuit/web",
-    "version": "0.1.0-m2.0",
+    "version": "0.1.1",
     "artifactName": "netcircuit-interface"
   },
   "contracts": {
-    "npm": "1.0.1",
-    "python": "1.0.1",
-    "npmSha256": "17cac7b7ec725581b2ff02078900d5a08ac0f5504df2e1fc3c3703a594c86579"
+    "npm": "0.1.1",
+    "python": "0.1.1",
+    "npmSha256": "f57d83d5f4c8faf3865e94e79ef331ebc936686e415e691372ecf0db06abbdaf"
   },
   "remote": {
-    "sourceRevision": "745077403f233790bdb6781c36d6502feca01642",
-    "apiOpenApiSha256": "f55fbf65d4988bc122b52936e69654a1024c8ac5d30240041629620b2a524e20",
+    "sourceRevision": "c9ce51c35942ad8211dacabe838ce25c5e76e537",
+    "apiOpenApiSha256": "9a02d85f33b5f07f931895e05aaf6e491cfa38a84d851db995b96dd5effa2a0f",
     "hardwareRpcVersion": "2.0",
     "integrationOwner": "net-Circuit-Remote"
   },
@@ -35,6 +35,6 @@
   },
   "history": {
     "filteredTip": "4784ff913db83915104406e92019b3bde574ecc1",
-    "ancestryConnection": "PENDING_SEPARATE_APPROVAL"
+    "ancestryConnection": "VERIFY_MASTER_REACHABILITY"
   }
 }

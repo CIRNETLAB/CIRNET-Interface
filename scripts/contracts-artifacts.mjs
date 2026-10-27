@@ -93,7 +93,7 @@ export async function bootstrap({manifestPath,githubEnv}={}){
   else writeFileSync(bootstrapModule,canonical,{flag:'wx'})
   const environment={NETCIRCUIT_ARTIFACTS_CONTEXT:context,NETCIRCUIT_ARTIFACTS_SESSION:artifactSession,
     NETCIRCUIT_ARTIFACTS_BOOTSTRAP_MODULE:bootstrapModule,
-    TMP:resolve(artifactSession,'tmp'),TEMP:resolve(artifactSession,'tmp'),npm_config_cache:resolve(artifactSession,'npm-cache')}
+    TMP:resolve(artifactSession,'tmp'),TEMP:resolve(artifactSession,'tmp'),TMPDIR:resolve(artifactSession,'tmp'),npm_config_cache:resolve(artifactSession,'npm-cache')}
   // Publish the owner and verified cleanup tooling before another download or
   // npm installation can fail. Cleanup does not depend on node_modules.
   if(githubEnv)for(const [name,value]of Object.entries(environment)){

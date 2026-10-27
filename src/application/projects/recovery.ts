@@ -78,6 +78,10 @@ export class BoundedRecoveryRepository implements RecoveryRepository {
   }
   async save(principalId:string,drafts:readonly RecoveryInput[]) {
     identity(principalId)
+    // Geometry validation is synchronous. Reject impossible incoming counts
+    // before reading payloads that can never fit, even in empty storage.
+    if(drafts.length>this.limits.maxTotalDrafts) throw new RecoveryError('Local recovery exceeds its total storage limit.')
+    if(drafts.length>this.limits.maxPrincipalDrafts) throw new RecoveryError('Recovery exceeds this account storage limit.')
     const updatedAt=this.limits.clock()
     const values=drafts.map(value=>this.decode({...this.input(value),format:'netcircuit.recovery',version:1,principalId,updatedAt}))
     if(new Set(values.map(key)).size!==values.length) throw new RecoveryError('Recovery batch contains duplicate drafts.')

@@ -33,6 +33,20 @@ test('entry/count/global byte bounds fail atomically and preserve previous recov
   assert.deepEqual(storage.rows,before)
 })
 
+test('impossible recovery batch counts reject before inspecting graph payloads and preserve stored drafts',async()=>{
+  const storage=new Storage(),repository=new BoundedRecoveryRepository(storage,{maxPrincipalDrafts:2,maxTotalDrafts:4})
+  await repository.save('alice',[draft()]);const before=structuredClone(storage.rows)
+  const oversized=Array.from({length:3},(_,index)=>draft(`extra-${index}`))
+  // The count already makes this batch impossible, including when a payload
+  // would otherwise trigger expensive parsing or a different validation error.
+  oversized[0].graph={schema_version:'future'} as unknown as RecoveryInput['graph']
+  await assert.rejects(repository.save('alice',oversized),/this account storage limit/)
+  assert.deepEqual(storage.rows,before)
+  const globallyOversized=Array.from({length:5},(_,index)=>({...draft(`global-${index}`),graph:oversized[0].graph}))
+  await assert.rejects(repository.save('alice',globallyOversized),/total storage limit/)
+  assert.deepEqual(storage.rows,before)
+})
+
 test('corrupt/future-version recovery is surfaced without deleting or returning its graph',async()=>{
   const storage=new Storage(),repository=new BoundedRecoveryRepository(storage)
   await repository.save('alice',[draft()]);const original=structuredClone(storage.rows)

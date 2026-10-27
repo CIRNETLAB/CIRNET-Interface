@@ -19,5 +19,5 @@ test('all generic catalog projections come from the pinned public package',()=>{
     assert.equal(existsSync(resolve(root,`src/data/${name}.json`)),false,name)
   }
   const pkg=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8'))
-  assert.equal(pkg.dependencies['@tinihi-labs/contracts'],'file:.artifacts/tinihi-labs-contracts-1.0.1.tgz')
+  assert.equal(pkg.dependencies['@tinihi-labs/contracts'],'file:.artifacts/tinihi-labs-contracts-0.1.1.tgz')
 })

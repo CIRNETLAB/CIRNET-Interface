@@ -12,7 +12,7 @@ const paths=Object.freeze({
   'canonical-editor-catalog':'device-library/editor/components.json',
   'canonical-physical-parts':'device-library/parts/physical-parts.json',
 })
-/** Read an exact allowlisted resource from the digest-verified 1.0.1 sdist. */
+/** Read an exact allowlisted resource from the digest-verified 0.1.1 sdist. */
 export function readContractsResource(name,{artifactPath=resolve(root,'.artifacts',lock.sdist.filename)}={}){
   if(!Object.hasOwn(paths,name))throw Error('Unknown released Contracts test resource.')
   const bytes=verifyBytes(readFileSync(artifactPath),lock.sdist.sha256)
