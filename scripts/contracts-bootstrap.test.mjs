@@ -29,6 +29,34 @@ test('download authentication is confined to the initial GitHub API asset reques
   assert.ok(calls.every(call=>call.redirect==='manual'))
   await assert.rejects(downloadArtifact('https://example.com/exact.tgz','0'.repeat(64),async()=>new Response(bytes)),/SHA256/)
 })
+
+test('renamed GitHub API assets retain binary negotiation across API redirects without forwarding credentials',async()=>{
+  const bytes=Buffer.from('versioned Contracts archive'),calls=[]
+  const stable='https://api.github.com/repositories/1430422737/releases/assets/682226359'
+  const fetcher=async(url,options)=>{
+    calls.push({url:String(url),headers:options.headers})
+    if(calls.length===1)return new Response(null,{status:301,headers:{location:stable}})
+    if(calls.length===2){
+      if(options.headers.Accept!=='application/octet-stream')return new Response(JSON.stringify({id:682226359,name:'tinihi-labs-contracts-0.1.1.tgz'}))
+      return new Response(null,{status:302,headers:{location:'https://release-assets.githubusercontent.com/exact/contracts.tgz'}})
+    }
+    return new Response(bytes)
+  }
+  const before=process.env.NETCIRCUIT_ARTIFACTS_TOKEN
+  process.env.NETCIRCUIT_ARTIFACTS_TOKEN='fixture-token'
+  try{assert.deepEqual(await downloadArtifact('https://api.github.com/repos/TINIHI-Labs/net-Circuit-Contracts/releases/assets/682226359',digest(bytes),fetcher),bytes)}
+  finally{if(before===undefined)delete process.env.NETCIRCUIT_ARTIFACTS_TOKEN;else process.env.NETCIRCUIT_ARTIFACTS_TOKEN=before}
+  assert.equal(calls[0].headers.Authorization,'Bearer fixture-token')
+  assert.equal(calls[1].url,stable)
+  assert.equal(calls[1].headers.Accept,'application/octet-stream')
+  assert.equal(calls[1].headers.Authorization,undefined)
+  assert.equal(calls[2].headers.Authorization,undefined)
+  assert.equal(calls[2].headers.Accept,undefined)
+  assert.equal(requestHeaders(stable,'fixture-token').Accept,'application/octet-stream')
+  for(const url of ['https://api.github.com/repositories/not-an-id/releases/assets/682226359','https://api.github.com:444/repositories/1430422737/releases/assets/682226359','https://api.github.com.evil.example/repositories/1430422737/releases/assets/682226359']){
+    assert.equal(requestHeaders(url,'fixture-token').Authorization,undefined)
+  }
+})
 test('resource consumers reject unapproved member names and altered release bytes',()=>{
   assert.throws(()=>readContractsResource('../contracts/private-schema'),/Unknown released/)
   assert.throws(()=>verifyBytes(Buffer.from('altered'),lock.sdist.sha256),/SHA256/)

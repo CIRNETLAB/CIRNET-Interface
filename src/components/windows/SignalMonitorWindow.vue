@@ -46,7 +46,7 @@ const plotHeight = computed(() => Math.max(200, rowCount.value * 36))
         </div>
       </div>
       <footer class="logic-measurements" aria-label="Digital capture measurements"><span>Samples <b>{{ capture?.sample_count ?? '—' }}</b></span><span>Duration <b>{{ capture ? formatTime(capture.duration_ns) : '—' }}</b></span><span>Edges <b>{{ capture ? traces.reduce((sum,t)=>sum+t.edges,0) : '—' }}</b></span><span>Trigger time <b>—</b></span></footer>
-      <div class="logic-footer"><i aria-hidden="true" /><span>{{ capture ? 'Capture ' + capture.capture_id : 'Capture not connected' }}</span><small>net*CIRCUIT · Signal Monitor</small></div>
+      <div class="logic-footer"><i aria-hidden="true" /><span>{{ capture ? 'Capture ' + capture.capture_id : 'Capture not connected' }}</span><small>CIRNET · Signal Monitor</small></div>
     </div>
   </div>
 </template>

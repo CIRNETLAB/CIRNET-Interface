@@ -11,7 +11,7 @@ test('the independent product consumes SDK entrypoints rather than generated sou
   for(const file of sources(resolve(root,'src'))){
     const text=readFileSync(file,'utf8')
     assert.doesNotMatch(text,/["'][^"']*contracts\/generated\//,file)
-    assert.doesNotMatch(text,/["'][^"']*net-Circuit-(?:Remote|Contracts)[/\\]/,file)
+    assert.doesNotMatch(text,/["'][^"']*(?:net-Circuit|CIRNET)-(?:Remote|Contracts|Simulator|Hardware|FPGA)[/\\]/,file)
   }
 })
 test('all generic catalog projections come from the pinned public package',()=>{

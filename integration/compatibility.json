@@ -15,7 +15,7 @@
     "sourceRevision": "c9ce51c35942ad8211dacabe838ce25c5e76e537",
     "apiOpenApiSha256": "9a02d85f33b5f07f931895e05aaf6e491cfa38a84d851db995b96dd5effa2a0f",
     "hardwareRpcVersion": "2.0",
-    "integrationOwner": "net-Circuit-Remote"
+    "integrationOwner": "CIRNET-Remote"
   },
   "graphs": [
     "1.0",

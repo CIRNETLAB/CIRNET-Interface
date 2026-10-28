@@ -15,7 +15,7 @@ export function checkedHttps(value){
 }
 export function requestHeaders(value,token=process.env.NETCIRCUIT_ARTIFACTS_TOKEN){
   const url=checkedHttps(value),headers={'User-Agent':'netcircuit-interface-consumer'}
-  if(url.hostname==='api.github.com'&&(!url.port||url.port==='443')&&/^\/repos\/[^/]+\/[^/]+\/releases\/assets\/[0-9]+$/.test(url.pathname)){
+  if(url.hostname==='api.github.com'&&(!url.port||url.port==='443')&&/^\/(?:repos\/[^/]+\/[^/]+|repositories\/[0-9]+)\/releases\/assets\/[0-9]+$/.test(url.pathname)){
     headers.Accept='application/octet-stream'
     if(token)headers.Authorization=`Bearer ${token}`
   }
@@ -30,8 +30,9 @@ export async function downloadArtifact(value,expected,fetcher=fetch){
       await response.body?.cancel()
       if(!location)throw Error('Artifact redirect has no location.')
       url=checkedHttps(new URL(location,url).href)
-      // Authentication belongs only to the initial GitHub API request.
-      headers={'User-Agent':'netcircuit-interface-consumer'}
+      // Renames can redirect to the stable repository-ID API route, which still
+      // needs binary negotiation. Credentials remain initial-request-only.
+      headers=requestHeaders(url,null)
       continue
     }
     if(!response.ok)throw Error(`Artifact download failed (HTTP ${response.status}).`)

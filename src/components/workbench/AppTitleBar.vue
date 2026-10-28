@@ -110,7 +110,7 @@ onUnmounted(() => { disposed = true; readVersion++; window.removeEventListener('
 </script>
 <template>
   <header class="app-titlebar">
-    <div class="brand" aria-label="net*CIRCUIT Remote"><span class="brand-mark"><img :src="iconUrl('favicon')" alt="net*CIRCUIT Remote" width="38" height="38" /></span><strong>net<span class="brand-circuit">*CIRCUIT</span> <span class="brand-remote">Remote</span></strong></div>
+    <div class="brand" aria-label="CIRNET Remote"><span class="brand-mark"><img :src="iconUrl('favicon')" alt="CIRNET Remote" width="38" height="38" /></span><strong><span class="brand-circuit">CIRNET</span> <span class="brand-remote">Remote</span></strong></div>
     <div class="header-command-strip">
       <div class="quick-actions" role="group" aria-label="Edit history">
       <button aria-label="Undo" title="Undo (Ctrl+Z)" :disabled="!circuit.canUndo" @click="circuit.undo()"><WorkbenchIcon name="undo" /></button>

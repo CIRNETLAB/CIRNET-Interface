@@ -28,7 +28,7 @@ test('complete workbench shell, window ownership and explicit transport boundari
   for(const path of required)assert.ok(text(path).length,path)
   assert.match(text('src/App.vue'),/SingleWorkspaceShell/)
   assert.doesNotMatch(text('src/App.vue'),/RouterLink|RouterView/)
-  assert.match(text('src/components/workbench/AppTitleBar.vue'),/net\*CIRCUIT Remote/)
+  assert.match(text('src/components/workbench/AppTitleBar.vue'),/CIRNET Remote/)
   assert.match(text('src/components/HardwareStatus.vue'),/Simulation/)
   assert.match(text('src/stores/station.ts'),/mode: 'simulation'/)
   const callers:string[]=[]
