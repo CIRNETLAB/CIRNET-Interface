@@ -255,7 +255,7 @@ export function createComponentTransformGizmo() {
       }
       return null
     },
-    hover(id: TransformHandle | null) { hovered = id && handles.get(id)!.visible ? id : null; paint() },
+    hover(id: TransformHandle | null) { const next = id && handles.get(id)!.visible ? id : null, changed = next !== hovered; hovered = next; paint(); return changed },
     activate(id: TransformHandle | null, model?: Group) {
       // A captured transform moves the handles away from the approach corridor.
       // Start and release discard that old screen-space input without affecting

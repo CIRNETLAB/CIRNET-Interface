@@ -449,9 +449,9 @@ export function createSceneManager({ renderer, canvas, onBeforeRender, onRender,
     gizmoHandlePosition(handle: TransformHandle) { if (disposed) return null; updateGizmo(); return gizmo.position(handle) },
     gizmoOrigin() { if (disposed) return null; updateGizmo(); return gizmo.origin() },
     pickGizmo(x: number, y: number) { if (!validPointer(x, y)) return null; updateGizmo(); ray(x, y); const hit = gizmo.pick(raycaster); return ghost && hit?.handle === 'xz' && !gizmo.placementFollowBlocked() ? null : hit },
-    hoverGizmo(x: number, y: number) { if (!validPointer(x, y)) return null; updateGizmo(); ray(x, y); let handle = gizmo.pick(raycaster)?.handle ?? null; gizmo.capturePlacement(x, y, camera, width, height); if (ghost && handle === 'xz' && !gizmo.placementFollowBlocked()) handle = null; gizmo.hover(handle); schedule(); return handle },
+    hoverGizmo(x: number, y: number) { if (!validPointer(x, y)) return null; updateGizmo(); ray(x, y); let handle = gizmo.pick(raycaster)?.handle ?? null; gizmo.capturePlacement(x, y, camera, width, height); if (ghost && handle === 'xz' && !gizmo.placementFollowBlocked()) handle = null; if (gizmo.hover(handle)) schedule(); return handle },
     placementFollowBlocked() { return !!ghost && gizmo.placementFollowBlocked() },
-    clearGizmoHover() { if (disposed) return; gizmo.clearPlacementCapture(); gizmo.hover(null); schedule() },
+    clearGizmoHover() { if (disposed) return; gizmo.clearPlacementCapture(); if (gizmo.hover(null)) schedule() },
     activateGizmo(handle: TransformHandle | null) { if (disposed) return; updateGizmo(); gizmo.activate(handle, gizmoModel()); schedule() },
     setGizmoRotation(angle: number) { if (disposed) return; gizmo.setRotation(angle); schedule() },
     syncGraph(next: CircuitGraph | null) {
@@ -651,7 +651,7 @@ export function createSceneManager({ renderer, canvas, onBeforeRender, onRender,
       return null
     },
     hoverEndpoint(endpoint: string | null) {
-      if (disposed) return
+      if (disposed || (endpoint === null && !highlightedPinModel && !contactHover.visible)) return
       clipping.invalidateBounds()
       contactHover.visible = false
       if (highlightedPinModel) {
@@ -753,7 +753,7 @@ export function createSceneManager({ renderer, canvas, onBeforeRender, onRender,
     },
     lockPointer(value: boolean) { pointerLocked = value; updateControlsEnabled() },
     setWireDrawingActive(value: boolean) { if (!disposed && controls) controls.mouseButtons.RIGHT = value ? null : MOUSE.ROTATE },
-    hoverWire(wire: WireIdentity | null) { wireLayer.hover(wire); schedule() },
+    hoverWire(wire: WireIdentity | null) { if (wireLayer.hover(wire)) schedule() },
     orientationAxes(): OrientationAxis[] {
       const inverse = camera.quaternion.clone().invert()
       const axes = [
