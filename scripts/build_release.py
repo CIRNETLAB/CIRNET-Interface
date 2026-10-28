@@ -11,7 +11,8 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '0.1.1'
+VERSION = '0.1.2'
+CONTRACTS_VERSION = '0.1.1'
 EXCLUDED = {'.git', 'node_modules', '.artifacts', '.runtime', '.build', '.test-build',
             '.benchmark-build', 'dist'}
 
@@ -108,7 +109,7 @@ def build(output_directory, source_root=ROOT):
         for name,value in sorted(source.items()) if name != 'migration/verification.md').encode()).hexdigest()
     metadata = {'schema':1, 'name':'netcircuit-interface', 'version':VERSION, 'kind':'source',
         'source':{'repository':repository, 'revision':revision, 'uncommittedMigration':False},
-        'contractsVersion':VERSION, 'sourceFingerprint':fingerprint,
+        'contractsVersion':CONTRACTS_VERSION, 'sourceFingerprint':fingerprint,
         'sourceFingerprintAlgorithm':'sha256-path-lines-v1'}
     source['interface-artifact.json'] = (json.dumps(metadata, indent=2, sort_keys=True)+'\n').encode()
     diagnostics = Path(owned['directory'])
@@ -122,7 +123,7 @@ def build(output_directory, source_root=ROOT):
                    'TMP': owned['temporary'], 'TEMP': owned['temporary'], 'TMPDIR': owned['temporary'],
                    'npm_config_cache': owned['cache']}
     bootstrap = json.loads(run_step('bootstrap', ['node', 'scripts/bootstrap-contracts.mjs'], exported, environment, diagnostics))
-    if bootstrap.get('contractsVersion') != VERSION or bootstrap.get('artifactSession') != owned['session']:
+    if bootstrap.get('contractsVersion') != CONTRACTS_VERSION or bootstrap.get('artifactSession') != owned['session']:
         raise ValueError('Committed bootstrap must select the exact Contracts version and inherited owned session.')
     environment.update(bootstrap['environment'])
     npm = shutil.which('npm.cmd' if os.name == 'nt' else 'npm')
@@ -144,7 +145,7 @@ def build(output_directory, source_root=ROOT):
             stream.write(archive_bytes(payload))
         artifacts[kind] = {'filename':filename, 'path':str(path),
                           'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
-    manifest = {'schema':1, 'name':metadata['name'], 'version':VERSION, 'contractsVersion':VERSION,
+    manifest = {'schema':1, 'name':metadata['name'], 'version':VERSION, 'contractsVersion':CONTRACTS_VERSION,
                 'source':metadata['source'], 'sourceFingerprint':fingerprint, 'artifacts':artifacts}
     with (output/'artifacts.json').open('x', encoding='utf-8') as stream:
         stream.write(json.dumps(manifest, indent=2, sort_keys=True)+'\n')

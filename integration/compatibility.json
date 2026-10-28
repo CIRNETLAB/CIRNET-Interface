@@ -3,7 +3,7 @@
   "status": "PINNED_ARTIFACT_INPUTS",
   "interface": {
     "name": "@net-circuit/web",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "artifactName": "netcircuit-interface"
   },
   "contracts": {
