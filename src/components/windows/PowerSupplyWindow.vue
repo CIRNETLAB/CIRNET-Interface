@@ -1,28 +1,35 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useCircuitStore } from '../../stores/circuit'
 import { useWorkspaceStore } from '../../stores/workspace'
+import { useInstrumentStore } from '../../stores/instrument'
 import { supplyControlValue, supplyControlMaximum, type SupplyControl } from '../../three/PowerSupplyModel'
 import { SUPPLY_THEME } from '../../data/instrumentVisuals'
-const circuit = useCircuitStore(), workspace = useWorkspaceStore()
+const circuit = useCircuitStore(), workspace = useWorkspaceStore(), instrument = useInstrumentStore()
 const selected = computed(() => circuit.graph?.modules.find(module => module.id === workspace.selectedModuleId && module.type === 'POWER_SUPPLY'))
 const voltage = computed(() => supplyControlValue(selected.value?.properties, 'voltage_v') as number)
 const current = computed(() => supplyControlValue(selected.value?.properties, 'current_limit_a') as number)
 const on = computed(() => !!selected.value && supplyControlValue(selected.value.properties, 'power_on') === true)
 const error = ref('')
-watch(() => selected.value?.id, () => { error.value = '' })
 const controls = [{ key: 'voltage_v', label: 'Voltage', input: 'Voltage setpoint', unit: 'V' }, { key: 'current_limit_a', label: 'Current / Ampe', input: 'Current limit', unit: 'A' }] as const
+type NumericControl = typeof controls[number]['key']
+const textDrafts = reactive<Partial<Record<NumericControl, string>>>({})
 const value = (key: SupplyControl) => supplyControlValue(selected.value?.properties, key) as number
+for (const {key} of controls) watch(() => selected.value ? value(key) : undefined, () => { delete textDrafts[key] }, {flush:'sync'})
+watch([() => selected.value?.id, () => circuit.current?.id, () => instrument.principalId], () => {
+  error.value = ''; for (const {key} of controls) delete textDrafts[key]
+}, {flush:'sync'})
 function update(key: SupplyControl, next: number | boolean) {
   if (!selected.value) return
   try { circuit.updateModuleProperties(selected.value.id, { [key]: next }); error.value = '' }
   catch (reason) { error.value = reason instanceof Error ? reason.message : String(reason) }
 }
-function change(key: SupplyControl, event: Event) {
+function change(key: NumericControl, event: Event) {
   const input = event.target as HTMLInputElement
   // Native controls commit on change (one graph/history action per drag), and
-  // always read back canonical state after validation. No shadow setpoint state.
+  // always read back canonical state after validation. Text drafts own no setpoint.
   update(key, input.value.trim() ? Number(input.value) : NaN)
+  delete textDrafts[key]
   input.value = selected.value ? String(value(key)) : ''
 }
 </script>
@@ -36,7 +43,7 @@ function change(key: SupplyControl, event: Event) {
           <div v-else class="supply-screen-empty"><strong>{{ selected ? 'DISPLAY OFF' : 'NO SUPPLY SELECTED' }}</strong><span>{{ selected ? 'Setpoints retained in circuit' : 'Select a Power Supply in the workspace' }}</span></div>
         </div>
         <fieldset :disabled="!selected" class="supply-controls" aria-label="Local supply setpoint controls"><legend class="visually-hidden">Local configuration only</legend>
-          <div v-for="control in controls" :key="control.key" class="supply-control" :style="{ '--knob-angle': (value(control.key) / supplyControlMaximum(control.key) * 270 - 135) + 'deg' }"><strong>{{ control.label }}</strong><div class="supply-knob" aria-hidden="true"><i /></div><input type="range" :aria-label="control.key === 'voltage_v' ? 'Voltage knob' : 'Current knob'" min="0" :max="supplyControlMaximum(control.key)" step="0.01" :value="value(control.key)" @change="change(control.key, $event)" /><label><span class="visually-hidden">{{ control.input }}</span><input type="number" :aria-label="control.input" min="0" :max="supplyControlMaximum(control.key)" step="0.01" :value="selected ? value(control.key) : ''" @change="change(control.key, $event)" /><span>{{ control.unit }}</span></label><small>0 – {{ supplyControlMaximum(control.key) }} {{ control.unit }}</small></div>
+          <div v-for="control in controls" :key="control.key" class="supply-control" :style="{ '--knob-angle': (value(control.key) / supplyControlMaximum(control.key) * 270 - 135) + 'deg' }"><strong>{{ control.label }}</strong><div class="supply-knob" aria-hidden="true"><i /></div><input type="range" :aria-label="control.key === 'voltage_v' ? 'Voltage knob' : 'Current knob'" min="0" :max="supplyControlMaximum(control.key)" step="0.01" :value="textDrafts[control.key]??value(control.key)" @input="textDrafts[control.key]=($event.target as HTMLInputElement).value" @change="change(control.key, $event)" /><label><span class="visually-hidden">{{ control.input }}</span><input type="number" :aria-label="control.input" min="0" :max="supplyControlMaximum(control.key)" step="0.01" :value="textDrafts[control.key]??(selected ? value(control.key) : '')" @input="textDrafts[control.key]=($event.target as HTMLInputElement).value" @change="change(control.key, $event)" /><span>{{ control.unit }}</span></label><small>0 – {{ supplyControlMaximum(control.key) }} {{ control.unit }}</small></div>
         </fieldset>
       </div>
       <div class="supply-connections"><div class="supply-power"><span>POWER</span><button type="button" role="switch" aria-label="Power switch" :aria-checked="on" :disabled="!selected" title="Toggle local supply power state" @click="update('power_on', !on)"><span>I</span><span>O</span></button><small>{{ selected ? (on ? 'ON' : 'OFF') : '—' }}</small></div><div class="supply-terminal"><i aria-hidden="true" /><strong>Vcc</strong><small>Visual terminal</small></div><div class="supply-terminal ground"><i aria-hidden="true" /><strong>Gnd</strong><small>Visual terminal</small></div></div>

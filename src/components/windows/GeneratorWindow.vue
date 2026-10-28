@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import {computed,ref,watch} from 'vue'
+import {computed,reactive,ref,watch} from 'vue'
 import {useInstrumentStore} from '../../stores/instrument'
+import {useCircuitStore} from '../../stores/circuit'
 import {GENERATOR_LAYOUT,GENERATOR_CH1,GENERATOR_CH2,GENERATOR_SYNC,GENERATOR_THEME,GENERATOR_PARAMETER_LABELS} from '../../three/FunctionGeneratorArtwork'
 import InstrumentDial from './InstrumentDial.vue'
 import {useStationStore} from '../../stores/station'
@@ -8,7 +9,7 @@ import {useExperimentStore} from '../../stores/experiment'
 import {generatorConfigurationIssue,runtimeGeneratorIssue} from '../../types/station'
 import {parseDocumentJson} from '../../domain/document/json'
 import {parseLab} from '../../contracts/validation'
-const instrument=useInstrumentStore(),station=useStationStore(),experiment=useExperimentStore()
+const instrument=useInstrumentStore(),station=useStationStore(),experiment=useExperimentStore(),circuit=useCircuitStore()
 const selectedChannel=ref<1|2>(1),formError=ref('')
 const declaredChannels=computed(()=>station.instrumentCapabilities?.generator.channels??0)
 const generatorAvailable=computed(()=>declaredChannels.value>0)
@@ -41,6 +42,12 @@ async function apply(){
 }
 type NumericField='frequency'|'amplitude'|'offset'|'phase'|'dutyCycle'
 const fields:readonly {key:NumericField;label:string}[]=[{key:'frequency',label:'frequency (Hz)'},{key:'amplitude',label:'amplitude (Vpp)'},{key:'offset',label:'offset (V)'},{key:'phase',label:'phase (degrees)'},{key:'dutyCycle',label:'duty cycle (%)'}]
+const textDrafts=reactive<Partial<Record<NumericField,string>>>({})
+const inputText=(field:NumericField)=>instrument.requestedInputErrors[`generator.${selectedChannel.value}.${field}`]?.text??selectedDraft.value[field]
+for(const {key} of fields)watch(()=>inputText(key),()=>{delete textDrafts[key]},{flush:'sync'})
+watch([()=>instrument.principalId,()=>circuit.current?.id,()=>selectedChannel.value,()=>station.executionTarget?.station_id],()=>{
+ for(const {key} of fields)delete textDrafts[key]
+},{flush:'sync'})
 function change(field:NumericField,event:Event){
  try{
   const value=parseDocumentJson((event.target as HTMLInputElement).value)
@@ -52,6 +59,7 @@ function change(field:NumericField,event:Event){
   }
   instrument.clearRequestedInputError(`generator.${selectedChannel.value}.${field}`);formError.value=''
  }catch(error){formError.value=error instanceof Error?error.message:'Invalid setting.';instrument.setRequestedInputError(`generator.${selectedChannel.value}.${field}`,(event.target as HTMLInputElement).value,formError.value)}
+ delete textDrafts[field]
 }
 function include(event:Event){const checked=(event.target as HTMLInputElement).checked;instrument.generatorPlanChannels=checked?[...new Set([...instrument.generatorPlanChannels,selectedChannel.value])]:instrument.generatorPlanChannels.filter(id=>id!==selectedChannel.value)}
 const channels=computed(()=>[{id:1,name:'CH1',color:GENERATOR_CH1,config:instrument.generator},{id:2,name:'CH2',color:GENERATOR_CH2,config:instrument.generator.channel2}].filter(channel=>channel.id<=declaredChannels.value))
@@ -77,7 +85,7 @@ function parameters(config:typeof instrument.generator.channel2){return [{label:
           <p v-if="declaredChannels > 16">{{ declaredChannels - 16 }} additional declared channels do not support configuration here.</p>
           <fieldset class="generator-request" :disabled="!generatorAvailable"><legend>Requested CH{{ selectedChannel }} settings</legend>
             <label>Waveform <select aria-label="Generator waveform" :value="selectedDraft.waveform" @change="selectedDraft.waveform = ($event.target as HTMLSelectElement).value"><option v-for="shape in ['Sine','Square','Triangle','Ramp','Pulse','Arbitrary']" :key="shape">{{ shape }}</option></select></label>
-            <label v-for="field in fields" :key="field.key">{{ field.label }}<input :aria-label="'Generator ' + field.label" :value="instrument.requestedInputErrors[`generator.${selectedChannel}.${field.key}`]?.text ?? selectedDraft[field.key]" inputmode="decimal" @change="change(field.key,$event)" /></label>
+            <label v-for="field in fields" :key="field.key">{{ field.label }}<input :aria-label="'Generator ' + field.label" :value="textDrafts[field.key]??inputText(field.key)" inputmode="decimal" @input="textDrafts[field.key]=($event.target as HTMLInputElement).value" @change="change(field.key,$event)" /></label>
             <label><input type="checkbox" aria-label="Requested generator enabled" :checked="instrument.generatorEnabled[selectedChannel]" @change="instrument.generatorEnabled[selectedChannel] = ($event.target as HTMLInputElement).checked" />Requested output enabled</label>
             <label><input type="checkbox" aria-label="Include generator in next Run" :checked="instrument.generatorPlanChannels.includes(selectedChannel)" @change="include" />Include in next Run</label>
             <small>Duty cycle is local-only. It is not sent to the laboratory.</small><p v-if="formError || invalidInput" role="alert">{{ formError || invalidInput?.error }}</p>

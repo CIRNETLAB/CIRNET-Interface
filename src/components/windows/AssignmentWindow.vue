@@ -9,6 +9,7 @@ import {copyReferenceDesign,parseBitAssignments} from '../../application/assignm
 import {parseDocumentJson} from '../../domain/document/json'
 const author=useAssignmentStore(),experiment=useExperimentStore(),circuit=useCircuitStore()
 const formError=ref(''),feedback=ref<'observed_only'|'detailed'>('observed_only')
+const assignmentIdText=ref<string|null>(null)
 const definitionJson=computed({get:()=>author.definitionText,set:text=>{author.setDefinitionText(text)}}),jsonDirty=computed(()=>author.unappliedDefinition)
 const endpointId=ref(''),endpointRole=ref<LabEndpoint['role']>('INPUT_SOURCE'),endpointBinding=ref<'design_port'|'reference_node_id'|'fixed_node_id'|'none'>('design_port'),endpointTarget=ref(''),endpointChannel=ref(''),endpointRequired=ref(true)
 const truthInputs=ref(''),truthOutputs=ref(''),signalName=ref(''),signalTime=ref('0'),signalValue=ref<'0'|'1'>('0')
@@ -19,6 +20,7 @@ function resetPrivateFields(){endpointId.value='';endpointRole.value='INPUT_SOUR
 function attempt(action:()=>unknown){try{action();formError.value=''}catch(error){formError.value=error instanceof Error?error.message:'The assignment is invalid.'}}
 function update(value:AssignmentDefinition){author.editDefinition(value)}
 function field<K extends keyof AssignmentDefinition>(key:K,value:AssignmentDefinition[K]){if(author.draft)attempt(()=>update({...author.draft!,[key]:value}))}
+function assignmentIdChange(event:Event){field('assignment_id',(event.target as HTMLInputElement).value);assignmentIdText.value=null}
 function integer(text:string){const value=parseDocumentJson(text);if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0)throw new Error('Enter a nonnegative integer without rounding.');return value}
 function addEndpoint(){if(!author.draft)return;attempt(()=>{
  const endpoint:LabEndpoint={endpoint_id:endpointId.value.trim(),role:endpointRole.value,required:endpointRequired.value,...(endpointChannel.value.trim()?{channel:integer(endpointChannel.value)}:{}),...(endpointBinding.value==='none'?{}:{[endpointBinding.value]:endpointTarget.value.trim()})}
@@ -37,6 +39,7 @@ async function confirm(){const intent=confirmation.value;confirmation.value=null
 async function publish(published:boolean){if(await author.publish(published,feedback.value))await experiment.loadAssignments()}
 watch(()=>[author.principalId,author.role] as const,()=>{resetPrivateFields();feedback.value='observed_only';formError.value='';confirmation.value=null;if(author.canAuthor)void author.loadDocuments();void experiment.loadAssignments()},{immediate:true})
 watch(()=>author.draft?.assignment_id,()=>{resetPrivateFields();feedback.value=author.binding?.feedback_policy??'observed_only'},{immediate:true})
+watch([()=>author.principalId,()=>author.role,()=>author.draft?.assignment_id,()=>author.binding,()=>author.selectionVersion],()=>{assignmentIdText.value=null},{flush:'sync'})
 </script>
 <template>
  <section class="assignment-manager" aria-label="Assignments">
@@ -54,7 +57,7 @@ watch(()=>author.draft?.assignment_id,()=>{resetPrivateFields();feedback.value=a
    <div v-if="author.requestedAssignmentId||confirmation" class="confirmation" aria-label="Replace assignment draft"><p>Replace the local assignment draft? Unsaved changes will be discarded.</p><button aria-label="Replace assignment draft" @click="author.requestedAssignmentId ? replaceRequested() : confirm()">Replace draft</button><button aria-label="Keep assignment changes" @click="author.requestedAssignmentId=null;confirmation=null">Keep changes</button></div>
    <template v-if="author.draft">
     <p role="status" aria-label="Assignment save status">Draft: {{author.phase}}<span v-if="author.binding"> · revision {{author.binding.revision}} · {{author.binding.published?'published revision '+author.binding.published_revision:'unpublished'}}</span></p>
-    <label>Assignment ID<input aria-label="Assignment ID" :disabled="!!author.binding" :value="author.draft.assignment_id" @change="field('assignment_id',($event.target as HTMLInputElement).value)" /></label>
+    <label>Assignment ID<input aria-label="Assignment ID" :disabled="!!author.binding" :value="assignmentIdText??author.draft.assignment_id" @input="assignmentIdText=($event.target as HTMLInputElement).value" @change="assignmentIdChange" /></label>
     <label>Title<input aria-label="Assignment title" maxlength="300" :value="author.draft.title" @input="field('title',($event.target as HTMLInputElement).value)" /></label>
     <label>Assessment policy<select aria-label="Assessment policy" :value="author.draft.assessment_policy" @change="field('assessment_policy',($event.target as HTMLSelectElement).value as AssignmentDefinition['assessment_policy'])"><option>FUNCTIONAL_ONLY</option><option>STRICT_TOPOLOGY</option><option>TOPOLOGY_AND_FUNCTION</option></select></label>
     <label>Component resolution<select aria-label="Component resolution" :value="author.draft.component_resolution_mode||'AUTO_DISCOVERY'" @change="field('component_resolution_mode',($event.target as HTMLSelectElement).value as AssignmentDefinition['component_resolution_mode'])"><option>AUTO_DISCOVERY</option><option>INSTRUCTOR_PROFILE</option><option>HYBRID</option></select></label>

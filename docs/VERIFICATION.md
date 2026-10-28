@@ -14,4 +14,6 @@ Inspect real screenshots/traces/logs before making claims. Record source revisio
 
 Server-route document command regression and its focused RED/GREEN evidence: [2026-10-28 hydration correction](../migration/server-route-hydration.md). Full browser acceptance remains a separate gate.
 
+Working-copy text loss during unrelated renders: [2026-10-28 input-draft correction](../migration/input-draft-rerender.md). It preserves change-time validation/history and records native focused results separately from full artifact acceptance.
+
 Linux compositing flag selection and its partial diagnostic result: [2026-10-28 browser compositor diagnostic](../migration/linux-browser-compositing.md). The [depth observer proof](../migration/depth-observer-roi.md) records 78 exact pixel-equivalence cases, four restoration guards and the unchanged original DPR2 test passing within 360 seconds. Hosted Linux and full committed-candidate acceptance remain separate gates.

@@ -5,6 +5,8 @@ import { useCircuitStore } from '../../stores/circuit'
 import type { CircuitSummary } from '../../types/projects'
 const projects=useProjectStore(),circuit=useCircuitStore()
 const newName=ref(''),newDescription=ref(''),projectName=ref(''),projectDescription=ref('')
+const circuitName=ref('')
+watch([()=>circuit.current?.id,()=>circuit.current?.name,()=>projects.saveState.principalId],()=>{circuitName.value=circuit.current?.name??''},{immediate:true})
 type Confirmation={kind:'project';id:string}|{kind:'circuit';document:CircuitSummary}|{kind:'recover'|'recovery';id:string}|{kind:'reload';id:string}
 const confirmation=ref<Confirmation|null>(null)
 watch(()=>projects.selectedProject,project=>{projectName.value=project?.name??'';projectDescription.value=project?.description??''},{immediate:true})
@@ -20,7 +22,7 @@ async function confirm(){
   else if(intent.kind==='recovery')await projects.removeRecovery(intent.id,true)
   else await projects.openDocument(intent.id,true)
 }
-function rename(event:Event){circuit.renameCurrent((event.target as HTMLInputElement).value)}
+function rename(event:Event){circuit.renameCurrent((event.target as HTMLInputElement).value);circuitName.value=circuit.current?.name??''}
 </script>
 <template>
   <section class="project-manager" aria-label="Project Manager">
@@ -58,7 +60,7 @@ function rename(event:Event){circuit.renameCurrent((event.target as HTMLInputEle
         <p v-if="projects.circuitsLoading">Loading circuits…</p>
         <ul><li v-for="document in projects.circuits" :key="document.document_id" class="document-row"><button :aria-label="`Open circuit ${document.name}`" @click="projects.requestOpen(document.document_id)">{{ document.name }} · r{{ document.revision }}</button><button :aria-label="`Delete circuit ${document.name}`" :disabled="projects.pending" @click="confirmation={kind:'circuit',document}">Delete</button></li></ul>
         <button v-if="projects.nextCircuitCursor" :disabled="projects.circuitsLoading" @click="projects.loadCircuits(true)">More circuits</button>
-        <label>Current circuit name<input aria-label="Current circuit name" :value="circuit.current?.name || ''" :disabled="!circuit.current" maxlength="128" @change="rename" /></label>
+        <label>Current circuit name<input aria-label="Current circuit name" :value="circuitName" :disabled="!circuit.current" maxlength="128" @input="circuitName=($event.target as HTMLInputElement).value" @change="rename" /></label>
         <div class="actions"><button aria-label="Save server circuit" :disabled="projects.navigationPending || !projects.saveState.binding || projects.saveState.phase==='saving'" @click="projects.saveCurrent()">Save</button><button aria-label="Save circuit as new server document" :disabled="projects.navigationPending || !projects.selectedProjectId || !circuit.current || projects.saveState.phase==='saving'" @click="projects.saveAs(projects.selectedProjectId!)">Save As</button></div>
         <div v-if="projects.saveState.phase==='conflict'" class="confirmation" aria-label="Server save conflict"><p>The server changed. Your local circuit is preserved. Save As creates another document; Reload replaces it with the server revision.</p><button @click="projects.error=null">Keep local changes</button><button aria-label="Reload server circuit" @click="confirmation={kind:'reload',id:projects.saveState.binding!.documentId}">Reload</button></div>
       </section>
