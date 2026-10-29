@@ -242,8 +242,8 @@ export function createWireLayer(endpointPosition: (endpoint: string) => Vector3 
     highlight(wire?: WireIdentity | null) { if (disposed) return; selected = wire ? { ...wire } : null; selectedHandle = null; selectedSegment = null; updateHandles(); updateSegment(); updateOutlines() },
     highlightMany(wires: WireIdentity[]) { if (disposed) return; multiSelected = wires.map(wire => ({ ...wire })); updateOutlines() },
     hover(wire: WireIdentity | null) { if (disposed) return false; const changed = !((!wire && !hovered) || (wire && same(hovered, wire))); hovered = wire ? { source: wire.source, destination: wire.destination } : null; updateOutlines(); return changed },
-    selectHandle(index: number | null) { if (disposed) return; selectedHandle = index; updateHandles() },
-    selectSegment(index: number | null) { if (disposed) return; selectedSegment = index; updateSegment() },
+    selectHandle(index: number | null) { if (disposed) return false; const changed = selectedHandle !== index; selectedHandle = index; updateHandles(); return changed },
+    selectSegment(index: number | null) { if (disposed) return false; const changed = selectedSegment !== index; selectedSegment = index; updateSegment(); return changed },
     dispose() {
       if (disposed) return; disposed = true
       clearDrawing(); clearDuplicate(); if (handleMesh) { tools.remove(handleMesh); disposeObject(handleMesh); handleMesh = null }

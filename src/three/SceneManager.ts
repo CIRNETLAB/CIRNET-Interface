@@ -687,7 +687,12 @@ export function createSceneManager({ renderer, canvas, onBeforeRender, onRender,
     clearWireDuplicate() { wireLayer.clearDuplicate(); contentChanged() },
     setSelectionPreview(graph: CircuitGraph, selection: EditorSelection, valid: boolean, fallbackRoutes?: Parameters<ReturnType<typeof createSelectionPreview>['show']>[3]) { if (!disposed) { selectionPreview.show(graph, selection, valid, fallbackRoutes); contentChanged() } },
     clearSelectionPreview() { if (!disposed) { selectionPreview.clear(); contentChanged() } },
-    hoverWireEdit(hit: WireEditPick | null) { wireLayer.hover(hit?.wire ?? null); wireLayer.selectHandle(hit?.kind === 'bend' ? hit.index : null); wireLayer.selectSegment(hit?.kind === 'segment' ? hit.index : null); schedule() },
+    hoverWireEdit(hit: WireEditPick | null) {
+      const wireChanged = wireLayer.hover(hit?.wire ?? null)
+      const handleChanged = wireLayer.selectHandle(hit?.kind === 'bend' ? hit.index : null)
+      const segmentChanged = wireLayer.selectSegment(hit?.kind === 'segment' ? hit.index : null)
+      if (wireChanged || handleChanged || segmentChanged) schedule()
+    },
     pickWireEdit(x: number, y: number, wire: WireIdentity): WireEditPick | null {
       if (!validPointer(x, y)) return null
       wireLayer.flush(); scene.updateMatrixWorld(true)

@@ -1,5 +1,42 @@
 # Interface verification and external evidence
 
+## 2026-10-29 wire-edit hover continuation
+
+`hoverWireEdit(null)` still scheduled a draw on every canvas leave, including
+when no wire, bend or segment hover changed. WireLayer now reports semantic
+changes while retaining its existing outline, handle and segment updates;
+SceneManager calls all three updates and schedules only when one changed.
+Selection resets remain authoritative. Graph/camera frames already pending
+remain scheduled; geometry, graph data and camera state are preserved.
+
+The focused regression was RED against `f6c8d273`: four failures exposed repeated
+idle, bend, segment and cleared-wire draws. After the repair all nine focused
+tests pass, together with ten Contracts checks. AST boundaries (229 modules) and
+E2E types pass. RED log SHA-256
+`96771dd03dd26c1dadc280a2cf16756dac322992bfa4f6c87c33b518d08008a1`;
+GREEN `f18c84b89ba5e60ea1b78e9796a736e7bde82cc0d4537ab5ab196d248ce16c06`.
+Independent review found no blocking issue. All 7,569 original ignored files
+retain their recorded size/mtime inventory; browser cases/configuration,
+assertions, DPR, deadlines, retries, traces and baselines are unchanged.
+
+Full type/unit execution collected 1,470 cases: 1,463 passed, six loopback
+fixtures failed with sandbox `EACCES`, and one directory-symlink fixture skipped
+for host privilege. The unchanged three affected test files then passed all
+19 cases with zero skips outside those restrictions (log SHA-256
+`88ca3fa01bd45478d34271c0c88ce73cf1fce6f5ab7ea1811c40cd6e05b10715`).
+All cases are covered across these invocations; the first run remains recorded
+as failed. All 16 managed Markdown files and the worktree/index artifact guard
+also pass. Existing ignored installation/output directories were not inputs.
+
+Evidence originates in the fresh shared session owned by
+`cirnet-m6-release-20261029`, outside all six Git roots. This focused result does
+not establish full native acceptance. The unchanged full Chromium comparison
+also failed the original LED export deadline, so no channel change is adopted.
+Fresh committed artifacts and actual Ubuntu acceptance are tracked in Remote's
+existing M6 verification ledger. The user's latest sequencing decision permits
+ordinary promotion/publication after that local acceptance without waiting for
+further Actions; pending or earlier failed hosted results remain explicit.
+
 Authority: [Remote Lab-First architecture](https://github.com/CIRNETLAB/CIRNET-Remote/blob/745077403f233790bdb6781c36d6502feca01642/docs/ARCHITECTURE.md). [Remote output policy](https://github.com/CIRNETLAB/CIRNET-Remote/blob/745077403f233790bdb6781c36d6502feca01642/docs/VERIFICATION.md) governs this extraction.
 
 Bootstrap the reviewed versioned artifacts before installing dependencies or running checks. Node and Git are required by the canonical allocator. Interface `scripts/artifact-paths.mjs` delegates to the independently versioned DEV package; it has no separate path algorithm. Diagnostic files must start outside every checkout/worktree/Git directory, including aliases. Only Markdown evidence belongs in source. Preserve source assets, historical evidence, protected markers and baselines.
